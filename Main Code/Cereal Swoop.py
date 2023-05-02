@@ -1,0 +1,328 @@
+import pygame
+from sys import exit
+import os
+import math
+import random
+
+pygame.init()
+pygame.display.set_caption("AP CSP Create Task")
+
+clock = pygame.time.Clock()
+pygame.time.get_ticks()
+
+WIDTH, HEIGHT = 1000, 500
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+
+LIGHT_BLUE = (120, 105, 200)
+DARK_BLUE = (65, 55, 154)
+BROWN = (249, 187, 105)
+WHITE = (250, 250, 250)
+BLACK = (000, 000, 000)
+
+start_time = 0
+player_gravity = 0
+score = 0
+end_time = 0
+
+bg = pygame.image.load(os.path.join("Create Task Assets", "CloudySky.png")).convert_alpha()
+bg = pygame.transform.scale(bg, (750, 775))
+bg_width = bg.get_width()
+
+pixel_font = pygame.font.Font("Pixeltype.ttf", 100)
+pixel_font_small = pygame.font.Font("Pixeltype.ttf", 65)
+# This font type was downloaded from https://www.dafont.com/pixeltype.font
+
+top_text = pixel_font.render("Cereal Swoop", False, BROWN)
+top_text_rect = top_text.get_rect(midtop = (WIDTH / 2, 75))
+
+bottom_text = pixel_font.render("Press Enter Key to Start", False, BROWN)
+bottom_text_rect = bottom_text.get_rect(midbottom = (WIDTH / 2, HEIGHT - 75))
+
+
+tiles = math.ceil(WIDTH / bg_width) + 1
+spoon_y = HEIGHT / 2
+spoon_x = WIDTH
+spoon_speed = 0
+bg_scroll_speed = 4
+cheerio_speed = 4
+bg_scroll = 0
+spoon_scroll = 0
+
+spoon = pygame.image.load(os.path.join("Create Task Assets", "Spoon.png")).convert_alpha()
+spoon_list = []
+spoon_height = spoon.get_height()
+
+cheerio = pygame.image.load(os.path.join("Create Task Assets", "Cheerio.png")).convert_alpha()
+rainbow_cheerio = pygame.image.load(os.path.join("Create Task Assets", "Rainbow Cheerio.png")).convert_alpha()
+cheerio_list = []
+
+bowl1 = pygame.image.load(os.path.join("Create Task Assets", "Bowl1.png")).convert_alpha()
+bowl2 = pygame.image.load(os.path.join("Create Task Assets", "Bowl2.png")).convert_alpha()
+bowl_list = [bowl1, bowl2]
+bowl_index = 0
+bowl = bowl_list[bowl_index]
+bowl_rect = bowl.get_rect(midbottom = (100, 100))
+
+gold_bowl1 = pygame.image.load(os.path.join("Create Task Assets", "Golden Bowl 1.png")).convert_alpha()
+gold_bowl2 = pygame.image.load(os.path.join("Create Task Assets", "Golden Bowl 2.png")).convert_alpha()
+gold_bowl_list = [gold_bowl1, gold_bowl2]
+gold_bowl = gold_bowl_list[bowl_index]
+
+milk = pygame.image.load(os.path.join("Create Task Assets", "Milk.png")).convert_alpha()
+milk_rect = milk.get_rect(topright = (WIDTH + 100, 300))
+
+marshmellow = pygame.image.load(os.path.join("Create Task Assets", "Marshmellow.png")).convert_alpha()
+marshmellow_rect = marshmellow.get_rect(topright = (WIDTH + 100, 300))
+
+big_bowl = pygame.transform.scale2x(bowl1)
+big_bowl_rect = big_bowl.get_rect(center = (WIDTH / 2, HEIGHT / 2))
+big_rainbow_cheerio = pygame.transform.scale(rainbow_cheerio, (50, 50))
+big_rainbow_cheerio_rect = big_rainbow_cheerio.get_rect(topright = (WIDTH - 150, 100))
+big_cheerio = pygame.transform.scale(cheerio, (50, 50))
+big_cheerio_rect = big_cheerio.get_rect(topright = (WIDTH - 150, 25))
+
+guide_text_1 = pixel_font.render("= 1", False, WHITE)
+guide_text_1_rect = guide_text_1.get_rect(midleft = (
+    WIDTH - 175 + big_cheerio.get_width(), 28 + big_cheerio.get_width() // 2))
+guide_text_2 = pixel_font.render("= 2", False, WHITE)
+guide_text_2_rect = guide_text_2.get_rect(midleft = (
+    WIDTH - 175 + big_cheerio.get_width(), 104 + big_cheerio.get_width() // 2))
+
+def bowl_animation():
+    global bowl, bowl_index, gold_bowl_list, gold_bowl
+    if bowl_index == 0:
+        bowl_index = 1
+    else:
+        bowl_index = 0
+
+    bowl = bowl_list[bowl_index]
+    gold_bowl = gold_bowl_list[bowl_index]
+
+def spoon_movement(spoon_list):
+    global game_active, end_time
+    if spoon_list:
+        for i in spoon_list:
+            i.x -= spoon_speed
+            screen.blit(spoon, i)
+            if i.x < -300:
+                spoon_list.remove(i)
+            if i.colliderect(bowl_rect) and marshmellow_powerup == False:
+                # game ends
+                if current_time:
+                    end_time = current_time
+                game_active = False
+
+        return spoon_list
+    else: return[]
+
+def cheerio_function(cheerio_list, rainbow_powerup):
+    global score
+    if cheerio_list:
+
+        for i in cheerio_list:
+            i.x -= bg_scroll_speed
+            if rainbow_powerup == True:
+                screen.blit(rainbow_cheerio, i)
+            else:
+                screen.blit(cheerio, i)
+            if i.x < -200:
+                cheerio_list.remove(i)
+            if i.colliderect(bowl_rect):
+                cheerio_list.remove(i)
+                if milk_powerup:
+                    score += 1
+                score += 1
+                print(score)
+
+        return cheerio_list
+    else:
+        return []
+
+def milk_function():
+    global milk_on, milk_powerup
+    milk_rect.x -= bg_scroll_speed
+    screen.blit(milk, milk_rect)
+    if milk_rect.colliderect(bowl_rect):
+
+        milk_on = False
+        milk_powerup = True
+
+def marshmellow_function():
+    global marshmellow_on, marshmellow_powerup
+
+    marshmellow_rect.x -= bg_scroll_speed
+    screen.blit(marshmellow, marshmellow_rect)
+    if marshmellow_rect.colliderect(bowl_rect):
+        marshmellow_on = False
+        marshmellow_powerup = True
+
+def time():
+    global current_time
+    if game_active:
+        current_time = pygame.time.get_ticks() - start_time
+        time_surface = pixel_font_small.render("Time: " + str(current_time / 1000), False, BLACK)
+        time_rect = time_surface.get_rect(topleft = (15, score_text.get_height() + 15))
+        screen.blit(time_surface, time_rect)
+
+
+spoon_event_tick = 4000
+cheerio_spawn_time = 750
+
+spoon_timer = pygame.USEREVENT + 1
+pygame.time.set_timer(spoon_timer, spoon_event_tick)
+
+cheerio_timer = pygame.USEREVENT + 2
+pygame.time.set_timer(cheerio_timer, cheerio_spawn_time)
+
+milk_timer = pygame.USEREVENT + 3
+pygame.time.set_timer(milk_timer, 30001)
+
+marshmellow_timer = pygame.USEREVENT + 4
+pygame.time.set_timer(marshmellow_timer, 20001)
+
+powerup_stop_timer = pygame.USEREVENT + 5
+pygame.time.set_timer(powerup_stop_timer, 10000)
+
+game_active = False
+milk_on = False
+marshmellow_on = False
+marshmellow_powerup = False
+milk_powerup = False
+
+run = True
+while run:
+
+    # background scroll
+    if game_active:
+        bg_scroll_speed += 0.0005
+        spoon_speed += 0.0005
+        cheerio_speed += 0.0005
+
+        bg_scroll -= bg_scroll_speed
+        for i in range(0, tiles):
+            screen.blit(bg, (i * bg_width + bg_scroll, 0))
+        if abs(bg_scroll) > bg_width:
+            bg_scroll = 0
+
+    # main event loop
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            exit()
+        if game_active:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                player_gravity = -10
+                bowl_animation()
+            if event.type == spoon_timer:
+                spoon_list.append(spoon.get_rect(
+                    topright=(1500, random.randint(0, HEIGHT - spoon_height))))
+                if spoon_event_tick <= 1500:
+                    spoon_event_tick -= 10
+                elif spoon_event_tick <= 2500:
+                    spoon_event_tick - 25
+                else:
+                    spoon_event_tick -= 100
+
+
+                pygame.time.set_timer(spoon_timer, spoon_event_tick)
+            if event.type == cheerio_timer:
+                cheerio_list.append(cheerio.get_rect(
+                    topleft=(WIDTH + random.randint(0, 300), random.randint(0, HEIGHT - 50))))
+
+                # for exponetial, cheerio_spawn_time = cheerio_spawn_time**0.999
+                if cheerio_spawn_time <= 10:
+                    cheerio_spawn_time = 10
+                elif cheerio_spawn_time <= 20:
+                    cheerio_spawn_time -= 0.01
+                elif cheerio_spawn_time <= 100:
+                    # make 0.25
+                    cheerio_spawn_time -= 0.37
+                elif cheerio_spawn_time <= 250:
+                    cheerio_spawn_time -= 2.7
+                else:
+                    # make -= 5
+                    cheerio_spawn_time -= 17
+                pygame.time.set_timer(cheerio_timer, int(cheerio_spawn_time))
+
+            if event.type == milk_timer:
+                print("MILK")
+                milk_rect = milk.get_rect(
+                    topleft = (WIDTH + random.randint(0, 300), random.randint(0, HEIGHT - 50)))
+                milk_on = True
+
+            if event.type == marshmellow_timer:
+                print("MARSHMELLOW")
+                marshmellow_rect = marshmellow.get_rect(
+                    topleft = (WIDTH + random.randint(0, 300), random.randint(0, HEIGHT - 50)))
+                marshmellow_on = True
+
+
+            if event.type == powerup_stop_timer:
+                milk_powerup = False
+                marshmellow_powerup = False
+
+        else:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                # reset all
+                game_active = True
+                spoon_list = []
+                bg_scroll_speed = 4
+                spoon_speed = 4
+                spoon_event_tick = 4000
+                cheerio_spawn_time = 700
+                cheerio_list = []
+                score = 0
+                start_time = pygame.time.get_ticks()
+                milk_on = False
+                marshmellow_on = False
+                milk_powerup = False
+                bowl_rect.y = 0
+
+    # game active
+    if game_active:
+        player_gravity += 0.5
+        if milk_powerup:
+            cheerio_list = cheerio_function(cheerio_list, True)
+        else:
+            cheerio_list = cheerio_function(cheerio_list, False)
+
+        spoon_list = spoon_movement(spoon_list)
+
+        if milk_on:
+            milk_function()
+        if marshmellow_on:
+            marshmellow_function()
+
+        bowl_rect.y += player_gravity
+        if bowl_rect.bottom >= HEIGHT: bowl_rect.bottom = HEIGHT
+        if bowl_rect.top <= 0: bowl_rect.top = 0
+
+        if marshmellow_powerup == False:
+            screen.blit(bowl, bowl_rect)
+        elif marshmellow_powerup == True:
+            screen.blit(gold_bowl, bowl_rect)
+
+        score_text = pixel_font_small.render("Cheerios: " + str(score), False, BLACK)
+
+        screen.blit(score_text, (15, 15))
+        time()
+
+    # game stopped
+    else:
+        screen.fill(LIGHT_BLUE)
+        screen.blit(big_bowl, big_bowl_rect)
+        screen.blit(top_text, top_text_rect)
+        screen.blit(bottom_text, bottom_text_rect)
+
+        leaderboard_score = pixel_font_small.render(("Score: " + str(score)), False, "white")
+        screen.blit(leaderboard_score, (10, 10))
+
+        leaderboard_time = pixel_font_small.render(("Time: " + str(end_time // 1000) + "s"), False, "white")
+        screen.blit(leaderboard_time, (10, leaderboard_score.get_height() + 10))
+        screen.blit(big_rainbow_cheerio, big_rainbow_cheerio_rect)
+        screen.blit(big_cheerio, big_cheerio_rect)
+
+        screen.blit(guide_text_1, guide_text_1_rect)
+        screen.blit(guide_text_2, guide_text_2_rect)
+
+    pygame.display.update()
+    clock.tick(60)
